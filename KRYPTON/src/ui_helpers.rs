@@ -63,7 +63,7 @@ pub fn singleline_edit<'a>(text: &'a mut String, hint: &str) -> TextEdit<'a> {
 }
 
 pub fn create_button(ui: &mut Ui, label: &str, on_click: impl FnOnce()) {
-    if ui.button(RichText::new(label).font(FontId::monospace(HEADING_SIZE))).highlight().clicked() {
+    if ui.button(RichText::new(label).font(FontId::monospace(HEADING_SIZE)).color(Color32::LIGHT_GREEN)).highlight().clicked() {
         on_click();
     }
 }

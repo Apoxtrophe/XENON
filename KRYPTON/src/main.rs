@@ -27,6 +27,9 @@ struct MyApp {
     terminal1: String, 
     terminal2: String, 
     permuations: usize,
+    vigenere_auto_encrypt: bool,
+    vigenere_auto_decrypt: bool,
+    plain_text_analysis: bool,
 }
 
 impl Default for MyApp {
@@ -41,6 +44,9 @@ impl Default for MyApp {
             alphabet_key: String::new(),
             key: String::new(),
             permuations: 1000,
+            vigenere_auto_encrypt: false,
+            vigenere_auto_decrypt: false, 
+            plain_text_analysis: false, 
         }
     }
 }
@@ -49,11 +55,10 @@ impl MyApp {
     fn create_button(&mut self, ui: &mut egui::Ui, label: &str, callback: impl FnOnce() -> String) {
         if ui.button(RichText::new(label).font(FontId::monospace(HEADING_SIZE))).clicked() {
             self.terminal1 = callback();
-        }
+        }       
     }
 
     fn update_terminal1(&mut self, value: String) {
-        println!("{}", "Hello World");
         self.terminal1 = value;
     }
 
@@ -62,11 +67,23 @@ impl MyApp {
     }
 }
 
-
-impl eframe::App for MyApp {
+impl eframe::App for MyApp {            
     fn update(&mut self, ctx: &egui::Context, _: &mut eframe::Frame) {
         
-        egui::SidePanel::left("MAIN")
+        if self.vigenere_auto_decrypt && self.vigenere_auto_encrypt {
+            self.vigenere_auto_decrypt = false;
+            self.vigenere_auto_encrypt = false; 
+        }
+        
+        if self.vigenere_auto_encrypt {
+            self.encrypted = vigenere_encrypt(&self.plaintext, &self.alphabet_key, Some(&self.key));
+        }
+        
+        if self.vigenere_auto_decrypt {
+            self.plaintext = vigenere_decrypt(&self.encrypted, &self.alphabet_key, Some(&self.key));
+        }
+        
+        egui::SidePanel::left("DASHBOARD")
             .max_width(PANEL_SIZE)
             .min_width(PANEL_SIZE)
             .resizable(false)
@@ -149,7 +166,18 @@ impl eframe::App for MyApp {
             .show(ctx, |ui| {
                 ui.vertical_centered(|ui| {
                     title(ui, "AUTOMATED ANALYSIS");
-
+                    ui.add_space(UI_SPACE);
+                    ui.checkbox(&mut self.plain_text_analysis, "PLAIN TEXT ANALYSIS");
+                    ui.add_space(UI_SPACE);
+                    
+                    let mut encrypted_analysis = &self.encrypted;
+                    let mut plaintext_analysis = &self.plaintext;
+                    
+                    if self.plain_text_analysis {
+                        encrypted_analysis = &self.plaintext;
+                        plaintext_analysis = &self.encrypted;
+                    }
+                    
                     let chi_score = chi_squared_score(&self.encrypted);
                     let match_score = match_percentage(&self.encrypted, &self.plaintext);
                     let kasiski_score = kasiski_examination(&self.encrypted, &[1,2,4]);
@@ -225,7 +253,6 @@ impl eframe::App for MyApp {
                     ui.add_sized(
                         (PANEL_SIZE, SCREEN_HEIGHT *0.25),
                         text_edit(&mut self.terminal2, "TERMINAL 2"));
-
                 });
 
             });
@@ -238,11 +265,14 @@ impl eframe::App for MyApp {
                 ui.vertical_centered(|ui|{
                     title(ui, "ENCRYPT");
                     hint(ui, "OPERATE ON PLAINTEXT");
-
+                }); 
+                ui.horizontal(|ui|{
                     create_button(ui, "VIGENERE", ||{
                         self.terminal1 = vigenere_encrypt(&self.plaintext, &self.alphabet_key, Some(&self.key));
                     });
-                }); 
+                    ui.checkbox(&mut self.vigenere_auto_encrypt, "AUTO ENCRYPT");
+                });
+                
                 
             });
             egui::SidePanel::left("Decode")
@@ -254,10 +284,13 @@ impl eframe::App for MyApp {
                     title(ui, "DECRYPT");
                     hint(ui, "OPERATE ON ENCRYPTED");
 
+                });
+                ui.horizontal(|ui|{
                     create_button(ui, "VIGENERE", ||{
                         let vigenere_decrypt = vigenere_decrypt(&self.encrypted, &self.alphabet_key, Some(&self.key));
                         self.terminal1 = vigenere_decrypt;
                     });
+                    ui.checkbox(&mut self.vigenere_auto_decrypt, "AUTO DECRYPT");
                 });
             });
             egui::SidePanel::left("Decipher")

@@ -25,5 +25,3 @@ pub const K3P: &str = "SLOWLYDESPARATLYSLOWLYTHEREMAINSOFPASSAGEDEBRISTHATENCUMB
 
 pub const K4: &str =  "OBKRUOXOGHULBSOLIFBBWFLRVQQPRNGKSSOTWTQSJQSSEKZZWATJKLUDIAWINFBNYPVTTMZFPKWGDKZXTJCDIGKUHUAUEKCAR";
 pub const K4P: &str = "_____________________EASTNORTHEAST_____________________________BERLINCLOCK_______________________";
-
-                                                             
