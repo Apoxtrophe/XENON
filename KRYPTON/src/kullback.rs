@@ -18,7 +18,6 @@ pub fn split_and_transform(s: &str, n: usize) -> Option<Vec<Vec<char>>> {
         }
     }
     if result.is_empty() {
-        println!("Kullback result empty");
         return None;
     }
     let mut transformed = vec![vec![' '; result.len()]; n];

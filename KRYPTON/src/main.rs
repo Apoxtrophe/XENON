@@ -9,6 +9,7 @@ mod bullshark;
 mod ui_helpers;
 
 use constants::*;
+use egui::RichText;
 use ui_helpers::*;
 use analysis::*;
 use toolkit::*;
@@ -24,6 +25,7 @@ struct MyApp {
     alphabet_key: String,
     key: String,
     terminal1: String, 
+    terminal2: String, 
     permuations: usize,
 }
 
@@ -33,6 +35,7 @@ impl Default for MyApp {
             encrypted: "PLAINTEXT".to_string(),
             plaintext: "ENCRYPTED".to_string(),
             terminal1: "TERMINAL 1".to_string(),
+            terminal2: "TERMINAL 2".to_string(),
             key_length: 10,
             alphabet_key_length: 10, 
             alphabet_key: String::new(),
@@ -42,11 +45,29 @@ impl Default for MyApp {
     }
 }
 
+impl MyApp {
+    fn create_button(&mut self, ui: &mut egui::Ui, label: &str, callback: impl FnOnce() -> String) {
+        if ui.button(RichText::new(label).font(FontId::monospace(HEADING_SIZE))).clicked() {
+            self.terminal1 = callback();
+        }
+    }
+
+    fn update_terminal1(&mut self, value: String) {
+        self.terminal1 = value;
+    }
+
+    fn update_terminal2(&mut self, value: String) {
+        self.terminal2 = value;
+    }
+}
+
+
 impl eframe::App for MyApp {
     fn update(&mut self, ctx: &egui::Context, _: &mut eframe::Frame) {
         
         egui::SidePanel::left("MAIN")
-            .min_width(SCREEN_WIDTH * (0.25))
+            .max_width(PANEL_SIZE)
+            .min_width(PANEL_SIZE)
             .resizable(false)
             .show(ctx, |ui| {
                 let preset_options = vec![
@@ -58,44 +79,6 @@ impl eframe::App for MyApp {
                 ui.vertical_centered(|ui| {
                     title(ui, "DASHBOARD");
                 });
-
-                ui.horizontal(|ui| {
-                    ui.add_sized(
-                        [PANEL_SIZE * (0.5), SCREEN_HEIGHT * 0.75],
-                        text_edit(&mut self.encrypted, "ENCRYPTED"),
-                    );
-                    ui.add_sized(
-                        [PANEL_SIZE * (0.5), SCREEN_HEIGHT * 0.75],
-                        text_edit(&mut self.plaintext, "PLAINTEXT"),
-                    );
-                    
-                });
-
-                let mut same_length = self.encrypted.len() == self.plaintext.len();
-                ui.checkbox(&mut same_length, "Plaintext & Encrypted Equal Length");
-                ui.add_space(UI_SPACE);
-
-                egui::ComboBox::from_label("~PRESETS~")
-                    .selected_text(
-                        preset_options
-                            .iter()
-                            .find(|&(_, v, _)| *v == self.plaintext)
-                            .unwrap_or_else(|| &preset_options[0])
-                            .0
-                            .clone(),
-                    )
-                    .show_ui(ui, |ui| {
-                        for (display, encrypted, plaintext) in &preset_options {
-                            if ui.selectable_value(
-                                &mut self.plaintext,
-                                plaintext.clone(),
-                                egui::RichText::new(display).size(FONT_SIZE),
-                            ).clicked() {
-                                self.plaintext = plaintext.clone();
-                                self.encrypted = encrypted.clone();
-                            }
-                        }
-                    });
                 ui.add_space(UI_SPACE);
                 ui.style_mut().spacing.slider_width = PANEL_SIZE * 0.25;
                 ui.style_mut().spacing.slider_rail_height = FONT_SIZE;
@@ -118,8 +101,48 @@ impl eframe::App for MyApp {
                     [PANEL_SIZE, HEADING_SIZE],
                     singleline_edit(&mut self.key, "KEY")
                 );
+                ui.add_space(UI_SPACE);
+
+                ui.horizontal(|ui| {
+                    ui.add_sized(
+                        [PANEL_SIZE * (0.5), SCREEN_HEIGHT * 0.75],
+                        text_edit(&mut self.encrypted, "ENCRYPTED"),
+                    );
+                    ui.add_sized(
+                        [PANEL_SIZE * (0.5), SCREEN_HEIGHT * 0.75],
+                        text_edit(&mut self.plaintext, "PLAINTEXT"),
+                    );             
+                }); 
+                ui.add_space(UI_SPACE);
+                egui::ComboBox::from_label("~PRESETS~")
+                    .selected_text(
+                        preset_options
+                            .iter()
+                            .find(|&(_, v, _)| *v == self.plaintext)
+                            .unwrap_or_else(|| &preset_options[0])
+                            .0
+                            .clone(),
+                    )
+                    .show_ui(ui, |ui| {
+                        for (display, encrypted, plaintext) in &preset_options {
+                            if ui.selectable_value(
+                                &mut self.plaintext,
+                                plaintext.clone(),
+                                egui::RichText::new(display).size(FONT_SIZE),
+                            ).clicked() {
+                                self.plaintext = plaintext.clone();
+                                self.encrypted = encrypted.clone();
+                            }
+                        }
+                    });
+                ui.add_space(UI_SPACE); 
+                let mut same_length = self.encrypted.len() == self.plaintext.len();
+                ui.checkbox(&mut same_length, "Plaintext & Encrypted Equal Length");
+
+
             });
             egui::SidePanel::left("ANALYSIS")
+            .max_width(PANEL_SIZE)
             .min_width(PANEL_SIZE)
             .resizable(false)
             .show(ctx, |ui| {
@@ -155,8 +178,7 @@ impl eframe::App for MyApp {
                     
                     heading(ui, "KASISKI EXAMINATION");
                     ui.add_space(2.0 * UI_SPACE);
-                    heading(ui, &format!("KEY LENGTHS: {:?}", kasiski_score));
-                    ui.separator();
+                    percentage_heading(ui, "", "", &format!("{:?}", kasiski_score));
                     
                     heading(ui, "FRIEDMAN TEST");
                     heading_label(ui, &friedman_score.to_string());
@@ -190,7 +212,85 @@ impl eframe::App for MyApp {
                     
                 });
             });
+
+            egui::TopBottomPanel::bottom("Output Terminal").show(ctx, |ui| {
+                ui.vertical_centered(|ui|{
+                    title(ui, "OUTPUT TERMINALS");
+                });
+                ui.horizontal(|ui|{
+                    ui.add_sized(
+                        (PANEL_SIZE, SCREEN_HEIGHT *0.25),
+                        text_edit(&mut self.terminal1, "TERMINAL 1"));
+                    ui.add_sized(
+                        (PANEL_SIZE, SCREEN_HEIGHT *0.25),
+                        text_edit(&mut self.terminal2, "TERMINAL 2"));
+
+                });
+
+            });
+
+            egui::SidePanel::left("Encrypt")
+            .resizable(false)
+            .max_width(PANEL_SIZE * 0.5)
+            .min_width(PANEL_SIZE * 0.5)
+            .show(ctx, |ui|{
+                ui.vertical_centered(|ui|{
+                    title(ui, "ENCRYPT");
+                    hint(ui, "OPERATE ON PLAINTEXT");
+
+                    create_button(ui, "VIGENERE", ||{
+                        self.terminal1 = vigenere_encrypt(&self.plaintext, &self.alphabet_key, Some(&self.key));
+                    });
+                }); 
+                
+            });
+            egui::SidePanel::left("Decode")
+            .resizable(false)
+            .max_width(PANEL_SIZE * 0.5)
+            .min_width(PANEL_SIZE * 0.5)
+            .show(ctx, |ui|{
+                ui.vertical_centered(|ui|{
+                    title(ui, "DECRYPT");
+                    hint(ui, "OPERATE ON ENCRYPTED");
+
+                    create_button(ui, "VIGENERE", ||{
+                        let vigenere_decrypt = vigenere_decrypt(&self.encrypted, &self.alphabet_key, Some(&self.key));
+                        self.terminal1 = vigenere_decrypt;
+                    });
+                });
+            });
+            egui::SidePanel::left("Decipher")
+            .resizable(false)
+            .max_width(PANEL_SIZE* 0.5)
+            .min_width(PANEL_SIZE * 0.5)
+            .show(ctx, |ui|{
+                ui.vertical_centered(|ui|{
+                    title(ui, "CRACK ENCRYPTION");
+                    hint(ui, "OPERATE ON ENCRYPTED & PLAINTEXT")
+                });
+            });
+            egui::SidePanel::left("Transform")
+            .resizable(false)
+            .max_width(PANEL_SIZE * 0.5)
+            .min_width(PANEL_SIZE * 0.5)
+            .show(ctx, |ui|{
+                ui.vertical_centered(|ui|{
+                    title(ui, "TRANSFORM");
+                    hint(ui, "OPERATE ON ENCRYPTED")
+                });
+            });
+
+            /* 
             egui::CentralPanel::default().show(ctx, |ui| {
+                ui.vertical_centered(|ui|{
+
+                    
+                });
+
+                
+                
+
+
                 if ui.button(egui::RichText::new("Bullshark Analysis\nViginere").font(FontId::monospace(HEADING_SIZE))).clicked() {
                     self.terminal1 = format!("Viginere\n{}\n\nBeaufort\n{}",bullshark_vigenere(&self.alphabet_key, &self.encrypted, &self.plaintext, self.key_length), bullshark_beaufort(&self.alphabet_key, &self.encrypted, &self.plaintext, self.key_length));
                 }
@@ -210,10 +310,8 @@ impl eframe::App for MyApp {
 
                 ui.label(egui::RichText::new(&self.terminal1).font(FontId::monospace(FONT_SIZE)));
                 
-            });       
-            egui::TopBottomPanel::bottom("Output").show(ctx, |ui| {
-                // Your code here
-            });
+            });  
+            */    
     }
 }
 
