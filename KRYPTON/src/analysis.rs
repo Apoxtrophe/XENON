@@ -15,7 +15,6 @@ pub fn chi_squared_score(encrypted_text: &str) -> f64 {
 
     // Array to store counts of each letter
     let mut counts = [0.0; 26];
-    counts = [0.0; 26];
 
 
     // Calculate total count of alphabetic characters and their respective counts

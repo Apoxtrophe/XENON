@@ -1,38 +1,29 @@
-use std::{default, fmt::{Debug, Pointer}, time::Instant};
-
-use analysis::{aster_score, chi_squared_score, friedman_key_length, ioc, kasiski_examination, key_elimination, match_percentage, percentage_blocks, phi_test, substitution_cipher_score};
-use eframe::egui;
+use eframe::egui::{self, FontId};
 
 mod analysis;
-
-mod crypt;
-use crypt::*;
-use egui::{style::HandleShape, Align, Button, FontId, IconPainter, Layout, Slider};
-
+mod constants;
 mod toolkit;
-use toolkit::*;
-
 mod kullback;
-use kullback::*;
-
 mod tigershark;
-use tigershark::*;
-
 mod bullshark;
+mod ui_helpers;
+
+use constants::*;
+use ui_helpers::*;
+use analysis::*;
+use toolkit::*;
+use kullback::*;
+use tigershark::*;
 use bullshark::*;
 
 struct MyApp {
     encrypted: String,
     plaintext: String,
-    key_length2: usize,
-    key_length1: usize,  
+    key_length: usize,
+    alphabet_key_length: usize,  
     alphabet_key: String,
     key: String,
     terminal1: String, 
-    screenWidth: f32,
-    screenHeight: f32,
-    editor_width: u8,
-    last_update: Instant,
     permuations: usize,
 }
 
@@ -42,59 +33,47 @@ impl Default for MyApp {
             encrypted: "PLAINTEXT".to_string(),
             plaintext: "ENCRYPTED".to_string(),
             terminal1: "TERMINAL 1".to_string(),
-            key_length2: 10,
-            key_length1: 10, 
+            key_length: 10,
+            alphabet_key_length: 10, 
             alphabet_key: String::new(),
             key: String::new(),
-            screenHeight: 1080.0,
-            screenWidth: 1920.0,
-            editor_width: 5,
-            last_update: Instant::now(),
             permuations: 1000,
         }
     }
 }
 
 impl eframe::App for MyApp {
-    fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
-        let now = Instant::now();
+    fn update(&mut self, ctx: &egui::Context, _: &mut eframe::Frame) {
         
         egui::SidePanel::left("MAIN")
-            .min_width(ctx.available_rect().width() * (0.06 * self.editor_width as f32))
+            .min_width(SCREEN_WIDTH * (0.25))
             .resizable(false)
             .show(ctx, |ui| {
-
                 let preset_options = vec![
-                    ("Kryptos Section 1".to_string(), K1.to_string(), K1p.to_string()),
-                    ("Kryptos Section 2".to_string(), K2.to_string(), K2p.to_string()),
-                    ("Kryptos Section 3".to_string(), K3.to_string(), K3p.to_string()),
-                    ("Kryptos Section 4".to_string(), K4.to_string(), K4p.to_string()),
+                    ("Kryptos Section 1".to_string(), K1.to_string(), K1P.to_string()),
+                    ("Kryptos Section 2".to_string(), K2.to_string(), K2P.to_string()),
+                    ("Kryptos Section 3".to_string(), K3.to_string(), K3P.to_string()),
+                    ("Kryptos Section 4".to_string(), K4.to_string(), K4P.to_string()),
                 ];
-
-                ui.label(egui::RichText::new("Editor Window Width").size(16.0));
-                ui.add(egui::Slider::new(&mut self.editor_width, 1..=10));
+                ui.vertical_centered(|ui| {
+                    title(ui, "DASHBOARD");
+                });
 
                 ui.horizontal(|ui| {
                     ui.add_sized(
-                        [self.screenWidth * (0.03 * self.editor_width as f32), self.screenHeight * 0.75],
-                        egui::TextEdit::multiline(&mut self.encrypted)
-                            .text_color(egui::Color32::LIGHT_GREEN)
-                            .font(FontId::monospace(16.0))
-                            .hint_text("PLAINTEXT"),
+                        [PANEL_SIZE * (0.5), SCREEN_HEIGHT * 0.75],
+                        text_edit(&mut self.encrypted, "ENCRYPTED"),
                     );
                     ui.add_sized(
-                        [self.screenWidth * (0.03 * self.editor_width as f32), self.screenHeight * 0.75],
-                        egui::TextEdit::multiline(&mut self.plaintext)
-                            .font(FontId::monospace(16.0))
-                            .text_color(egui::Color32::LIGHT_GREEN)
-                            .hint_text("ENCRYPTED"),
+                        [PANEL_SIZE * (0.5), SCREEN_HEIGHT * 0.75],
+                        text_edit(&mut self.plaintext, "PLAINTEXT"),
                     );
                     
                 });
 
                 let mut same_length = self.encrypted.len() == self.plaintext.len();
                 ui.checkbox(&mut same_length, "Plaintext & Encrypted Equal Length");
-                ui.add_space(self.screenHeight * 0.01);
+                ui.add_space(UI_SPACE);
 
                 egui::ComboBox::from_label("~PRESETS~")
                     .selected_text(
@@ -110,141 +89,138 @@ impl eframe::App for MyApp {
                             if ui.selectable_value(
                                 &mut self.plaintext,
                                 plaintext.clone(),
-                                egui::RichText::new(display).size(16.0),
+                                egui::RichText::new(display).size(FONT_SIZE),
                             ).clicked() {
                                 self.plaintext = plaintext.clone();
                                 self.encrypted = encrypted.clone();
                             }
                         }
                     });
-                ui.add_space(self.screenHeight * 0.01);
-                ui.style_mut().spacing.slider_width = (self.screenWidth * (0.04 * self.editor_width as f32));
-                ui.style_mut().spacing.slider_rail_height = 16.0;
-                ui.add(egui::Slider::new(&mut self.key_length2, 1..=30).text("Key 2 Length"));
-                ui.add_space(self.screenHeight * 0.01);
+                ui.add_space(UI_SPACE);
+                ui.style_mut().spacing.slider_width = PANEL_SIZE * 0.25;
+                ui.style_mut().spacing.slider_rail_height = FONT_SIZE;
+
+
+                ui.horizontal(|ui| {
+                    ui.add(egui::Slider::new(&mut self.alphabet_key_length, 1..=MAX_KEY_LENGTH).text("ALPHABET KEY LENGTH"));
+                    ui.add(egui::Slider::new(&mut self.key_length, 1..=MAX_KEY_LENGTH).text("KEY LENGTH"));                  
+                });
+
+                ui.add_space(UI_SPACE);
                 ui.add_sized(
-                    [self.screenWidth * (0.06 * self.editor_width as f32), self.screenHeight * 0.02],
-                    egui::TextEdit::singleline(&mut self.alphabet_key)
-                        .font(FontId::monospace(20.0))
-                        .hint_text("Alphabet Key")
-                        .text_color(egui::Color32::LIGHT_YELLOW),
+                    [PANEL_SIZE, HEADING_SIZE],
+                    singleline_edit(&mut self.alphabet_key, "ALPHABET KEY")
                 );
 
-                ui.add_space(self.screenHeight * 0.01);
+                ui.add_space(UI_SPACE);
 
                 ui.add_sized(
-                    [self.screenWidth * (0.06 * self.editor_width as f32), self.screenHeight * 0.02],
-                    egui::TextEdit::singleline(&mut self.key)
-                        .font(FontId::monospace(20.0))
-                        .hint_text("Key 2")
-                        .text_color(egui::Color32::LIGHT_YELLOW),
+                    [PANEL_SIZE, HEADING_SIZE],
+                    singleline_edit(&mut self.key, "KEY")
                 );
             });
             egui::SidePanel::left("ANALYSIS")
-            .min_width(ctx.available_rect().width() * (0.06 * self.editor_width as f32))
+            .min_width(PANEL_SIZE)
             .resizable(false)
             .show(ctx, |ui| {
                 ui.vertical_centered(|ui| {
-                    ui.heading("AUTOMATED ANALYSIS");
+                    title(ui, "AUTOMATED ANALYSIS");
 
-                    ui.heading(egui::RichText::new(format!("CHI SCORE")).color(egui::Color32::LIGHT_GREEN).font(FontId::monospace(16.0)),
-                        );
-                    ui.heading(egui::RichText::new(format!("{}", chi_squared_score(&self.encrypted))).color(egui::Color32::LIGHT_GREEN).font(FontId::monospace(16.0)),
-                        );
-                    ui.heading(egui::RichText::new(format!("ENGLISH {} ENCRYPTED", percentage_blocks(chi_squared_score(&self.encrypted), 0.0, 10.0))).color(egui::Color32::LIGHT_GREEN).font(FontId::monospace(16.0)),
-                        );
+                    let chi_score = chi_squared_score(&self.encrypted);
+                    let match_score = match_percentage(&self.encrypted, &self.plaintext);
+                    let kasiski_score = kasiski_examination(&self.encrypted, &[1,2,4]);
+                    let friedman_score = friedman_key_length(&self.encrypted, self.key_length);
+                    let index_of_coincidence_score = ioc(&self.encrypted);
+                    let key_elimination_score = key_elimination(self.key_length, &self.encrypted, &self.plaintext).2;
+                    let columnar_coincidence_score = phi_test(&self.encrypted, self.key_length);
+                    let aster_score = aster_score(&self.encrypted, &self.plaintext);
+                    let substitution_score = substitution_cipher_score(&self.encrypted, &self.plaintext).unwrap_or(0.0);
+
+                    let chi_percentage = percentage_blocks(chi_score, 0.0, 10.0);
+                    let match_percentage = percentage_blocks(match_score, 0.0, 100.0);
+                    let friedman_percentage = percentage_blocks(friedman_score, 0.038, 0.068);
+                    let index_of_coincidence_percentage = percentage_blocks(index_of_coincidence_score, 0.038, 0.068);
+                    let key_elimination_percentage = percentage_blocks(key_elimination(self.key_length, &self.encrypted, &self.plaintext).1, 0.0, 0.6);
+                    let columnar_coincidence_percentage = percentage_blocks(columnar_coincidence_score, 1.0, 2.5);
+                    let aster_percentage = percentage_blocks(aster_score, 0.0, 100.0);
+                    let substitution_percentage = percentage_blocks(substitution_score, 0.0, 100.0);
+                    
+                    heading(ui, "CHI SCORE");
+                    heading_label(ui, &chi_score.to_string());
+                    percentage_heading(ui, "ENGLISH", "ENCRYPTED", &chi_percentage);
+                    
+                    heading(ui, "MATCH SCORE");
+                    heading_label(ui, &match_score.to_string());
+                    percentage_heading(ui, "NO MATCHES", "MATCHING", &match_percentage);
+                    
+                    heading(ui, "KASISKI EXAMINATION");
+                    ui.add_space(2.0 * UI_SPACE);
+                    heading(ui, &format!("KEY LENGTHS: {:?}", kasiski_score));
                     ui.separator();
-                    ui.heading(egui::RichText::new(format!("MATCH SCORE")).color(egui::Color32::LIGHT_GREEN).font(FontId::monospace(16.0)),
-                        );
-                    ui.heading(egui::RichText::new(format!("{}", match_percentage(&self.encrypted, &self.plaintext))).color(egui::Color32::LIGHT_GREEN).font(FontId::monospace(16.0)),
-                        );
-                    ui.heading(egui::RichText::new(format!("NO MATCHES {} MATCHING", percentage_blocks(match_percentage(&self.encrypted, &self.plaintext), 0.0, 100.0))).color(egui::Color32::LIGHT_GREEN).font(FontId::monospace(16.0)),
-                        );
-                    ui.separator() ;
-                    ui.heading(egui::RichText::new(format!("KASISKI EXAMINATION")).color(egui::Color32::LIGHT_GREEN).font(FontId::monospace(16.0)),
-                        );
-                    ui.heading(egui::RichText::new(format!("Likely Key Lengths")).color(egui::Color32::LIGHT_GREEN).font(FontId::monospace(16.0)),
-                        );
-                    ui.heading(egui::RichText::new(format!("KEYS LENGTHS: {:?}", kasiski_examination(&self.encrypted, &[1,2,4]))).color(egui::Color32::LIGHT_GREEN).font(FontId::monospace(16.0)),
-                        );
-                    ui.separator();
-                    ui.heading(egui::RichText::new(format!("FRIEDMAN TEST")).color(egui::Color32::LIGHT_GREEN).font(FontId::monospace(16.0)),
-                    );
-                    ui.heading(egui::RichText::new(format!("{}", friedman_key_length(&self.encrypted, self.key_length2))).color(egui::Color32::LIGHT_GREEN).font(FontId::monospace(16.0)),
-                    );
-                     ui.heading(egui::RichText::new(format!("LOW CONFIDENCE {} HIGH CONFIDENCE", percentage_blocks(friedman_key_length(&self.encrypted, self.key_length2), 0.038, 0.068))).color(egui::Color32::LIGHT_GREEN).font(FontId::monospace(16.0)),
-                    );
-                    ui.separator();
-                    ui.heading(egui::RichText::new(format!("INDEX OF COINCIDENCE")).color(egui::Color32::LIGHT_GREEN).font(FontId::monospace(16.0)),
-                    );
-                    ui.heading(egui::RichText::new(format!("{}", ioc(&self.encrypted))).color(egui::Color32::LIGHT_GREEN).font(FontId::monospace(16.0)),
-                    );
-                    ui.heading(egui::RichText::new(format!("RANDOM {} ENGLISH", percentage_blocks(ioc(&self.encrypted), 0.038, 0.068))).color(egui::Color32::LIGHT_GREEN).font(FontId::monospace(16.0)),
-                    );
-                    ui.separator();
-                    ui.heading(egui::RichText::new(format!("KEY ELIMINATION")).color(egui::Color32::LIGHT_GREEN).font(FontId::monospace(16.0)),
-                    );
-                    ui.heading(egui::RichText::new(format!("Possible Key :{:?}", key_elimination(self.key_length2, &self.encrypted, &self.plaintext).2)).color(egui::Color32::LIGHT_GREEN).font(FontId::monospace(16.0)),
-                    );
-                    ui.heading(egui::RichText::new(format!("LOW CONFIDENCE {} HIGH CONFIDENCE", percentage_blocks(key_elimination(self.key_length2, &self.encrypted, &self.plaintext).1, 0.0, 0.6))).color(egui::Color32::LIGHT_GREEN).font(FontId::monospace(16.0)),
-                    );
-                    ui.separator();
-                    ui.heading(egui::RichText::new(format!("Columnar Index Of Coincidence")).color(egui::Color32::LIGHT_GREEN).font(FontId::monospace(16.0)),
-                    );
-                    ui.heading(egui::RichText::new(format!("{}", phi_test(&self.encrypted, self.key_length2))).color(egui::Color32::LIGHT_GREEN).font(FontId::monospace(16.0)),
-                    );
-                    ui.heading(egui::RichText::new(format!("LOW CONFIDENCE {} HIGH CONFIDENCE", percentage_blocks(phi_test(&self.encrypted, self.key_length2), 1.0, 2.5))).color(egui::Color32::LIGHT_GREEN).font(FontId::monospace(16.0)),
-                    );
-                    ui.separator();
-                    ui.heading(egui::RichText::new(format!("ASTER SCORE")).color(egui::Color32::LIGHT_GREEN).font(FontId::monospace(16.0)),
-                    );
-                    ui.heading(egui::RichText::new(format!("AVG. Char Distance Of Matching Indices \n{}", aster_score(&self.encrypted, &self.plaintext))).color(egui::Color32::LIGHT_GREEN).font(FontId::monospace(16.0)),
-                    );
-                    ui.heading(egui::RichText::new(format!("LOW MATCH {} CLOSE MATCH", percentage_blocks(aster_score(&self.encrypted, &self.plaintext), 0.0, 100.0))).color(egui::Color32::LIGHT_GREEN).font(FontId::monospace(16.0)),
-                    );
-                    ui.separator();
-                    ui.heading(egui::RichText::new(format!("SUBSTITUTION SCORE")).color(egui::Color32::LIGHT_GREEN).font(FontId::monospace(16.0)),
-                    );
-                    ui.heading(egui::RichText::new(format!("Likelihood Of A Substituion")).color(egui::Color32::LIGHT_GREEN).font(FontId::monospace(16.0)),
-                    );
-                    ui.heading(egui::RichText::new(format!("LOW MATCH {} CLOSE MATCH", percentage_blocks(substitution_cipher_score(&self.encrypted, &self.plaintext).unwrap_or(0.0), 0.0, 100.0))).color(egui::Color32::LIGHT_GREEN).font(FontId::monospace(16.0)),
-                    );
-                    ui.separator();
+                    
+                    heading(ui, "FRIEDMAN TEST");
+                    heading_label(ui, &friedman_score.to_string());
+                    percentage_heading(ui, "LOW CONFIDENCE", "HIGH CONFIDENCE", &friedman_percentage);
+                    
+                    heading(ui, "INDEX OF COINCIDENCE");
+                    heading_label(ui, &index_of_coincidence_score.to_string());
+                    percentage_heading(ui, "RANDOM", "ENGLISH", &index_of_coincidence_percentage);
+                    
+                    heading(ui, "KEY ELIMINATION");
+                    heading_label(ui, &format!("Possible Key : {:?}", key_elimination_score));
+                    percentage_heading(ui, "LOW CONFIDENCE", "HIGH CONFIDENCE", &key_elimination_percentage);
+                    
+                    heading(ui, "COLUMNAR COINCIDENCE INDEX");
+                    heading_label(ui, &columnar_coincidence_score.to_string());
+                    percentage_heading(ui, "LOW CONFIDENCE", "HIGH CONFIDENCE", &columnar_coincidence_percentage);
+                    
+                    heading(ui, "ASTER SCORE");
+                    heading_label(ui, &aster_score.to_string());
+                    percentage_heading(ui, "LOW MATCH", "CLOSE MATCH", &aster_percentage);
+                    
+                    heading(ui, "SUBSTITUTION CIPHER SCORE");
+                    heading_label(ui, &substitution_score.to_string());
+                    percentage_heading(ui, "LOW MATCH", "CLOSE MATCH", &substitution_percentage);
+
+                    heading(ui, "KULLBACK-LEIBLER DIVERGENCE");
+
+                    let encrypted_kullback = &self.encrypted;
+                    let aggr_ioc = kullback(&encrypted_kullback);
+                    plot_kullback(ui, aggr_ioc);
                     
                 });
             });
             egui::CentralPanel::default().show(ctx, |ui| {
-                if ui.button(egui::RichText::new("Kullback Test\n             ").font(FontId::monospace(24.0))).clicked() {
-                    self.terminal1 = kullback(&self.encrypted, self.key_length2)
+                if ui.button(egui::RichText::new("Bullshark Analysis\nViginere").font(FontId::monospace(HEADING_SIZE))).clicked() {
+                    self.terminal1 = format!("Viginere\n{}\n\nBeaufort\n{}",bullshark_vigenere(&self.alphabet_key, &self.encrypted, &self.plaintext, self.key_length), bullshark_beaufort(&self.alphabet_key, &self.encrypted, &self.plaintext, self.key_length));
                 }
-                if ui.button(egui::RichText::new("Bullshark Analysis\nViginere").font(FontId::monospace(24.0))).clicked() {
-                    self.terminal1 = format!("Viginere\n{}\n\nBeaufort\n{}",bullshark_vigenere(&self.alphabet_key, &self.encrypted, &self.plaintext, self.key_length2), bullshark_beaufort(&self.alphabet_key, &self.encrypted, &self.plaintext, self.key_length2));
-                }
-                if ui.button(egui::RichText::new("Encrypt\nViginere").font(FontId::monospace(24.0))).clicked() {
+                if ui.button(egui::RichText::new("Encrypt\nViginere").font(FontId::monospace(HEADING_SIZE))).clicked() {
                     self.terminal1 = vigenere_encrypt(&self.plaintext, &self.alphabet_key, Some(&self.key));
                 }
-                if ui.button(egui::RichText::new("Decrypt\nViginere").font(FontId::monospace(24.0))).clicked() {
+                if ui.button(egui::RichText::new("Decrypt\nViginere").font(FontId::monospace(HEADING_SIZE))).clicked() {
                     self.terminal1 = vigenere_decrypt(&self.encrypted, &self.alphabet_key, Some(&self.key));
                 }
-                ui.add(egui::Slider::new(&mut self.key_length1, 1..=26).text("Key Length 1"));
                 ui.add(egui::Slider::new(&mut self.permuations, 1..=100000).text("Permutations"));
-                if ui.button(egui::RichText::new("Tiger Shark Vigenere").font(FontId::monospace(24.0))).clicked() {
-                    self.terminal1 = tigershark_vigenere(self.key_length1, self.key_length2, &self.encrypted, &self.plaintext, self.permuations);
+                if ui.button(egui::RichText::new("Tiger Shark Vigenere").font(FontId::monospace(HEADING_SIZE))).clicked() {
+                    self.terminal1 = tigershark_vigenere(self.alphabet_key_length, self.key_length, &self.encrypted, &self.plaintext, self.permuations);
                 }
-                if ui.button(egui::RichText::new("Tiger Shark Beaufort").font(FontId::monospace(24.0))).clicked() {
-                    self.terminal1 = tigershark_beaufort(self.key_length1, self.key_length2, &self.encrypted, &self.plaintext, self.permuations);
+                if ui.button(egui::RichText::new("Tiger Shark Beaufort").font(FontId::monospace(HEADING_SIZE))).clicked() {
+                    self.terminal1 = tigershark_beaufort(self.alphabet_key_length, self.key_length, &self.encrypted, &self.plaintext, self.permuations);
                 }
 
-                ui.label(egui::RichText::new(&self.terminal1).font(FontId::monospace(16.0)));
+                ui.label(egui::RichText::new(&self.terminal1).font(FontId::monospace(FONT_SIZE)));
                 
             });       
+            egui::TopBottomPanel::bottom("Output").show(ctx, |ui| {
+                // Your code here
+            });
     }
 }
 
 fn main() -> Result<(), eframe::Error> {
 
     let options = eframe::NativeOptions {
-        viewport: egui::ViewportBuilder::default().with_inner_size([1920.0, 1080.0]),
+        viewport: egui::ViewportBuilder::default().with_inner_size([SCREEN_WIDTH, SCREEN_HEIGHT]),
         ..Default::default()
     };
     eframe::run_native(

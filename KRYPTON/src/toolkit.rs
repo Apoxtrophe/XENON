@@ -1,9 +1,5 @@
- use std::sync::{Arc, Mutex};
 
-use itertools::Itertools;
-use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 
-use crate::{analysis::{aster_score, chi_squared_score, match_percentage}, ALPHABET};
 
 pub fn generate_vigenere_table(keyword1: &str, keyword2: &str) -> Vec<Vec<char>> {
     let alphabet: Vec<char> = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".chars().collect();

@@ -25,7 +25,7 @@ pub fn tigershark_vigenere(
     let mut best_keyword2 = String::new();
 
     // Iterate 5 times to find the best keyword
-    for iteration in 0..5 {
+    for _ in 0..5 {
         for index in 0..key_length1 {
             let mut best_char = keyword1[index];
             // Try each character in the alphabet at the current index
@@ -101,7 +101,7 @@ pub fn tigershark_beaufort(
     let mut best_keyword2 = String::new();
 
     // Iterate 5 times to find the best keyword
-    for iteration in 0..5 {
+    for _ in 0..5 {
         for index in 0..key_length1 {
             let mut best_char = keyword1[index];
             // Try each character in the alphabet at the current index
@@ -163,7 +163,6 @@ pub fn remora_vigenere(
 ) -> (String, f64) {
     let mut best_score = 0.0;
     let mut best_keyword2 = String::new();
-    let mut best_decrypted = String::new();
     let mut keyword2: Vec<char> = vec!['A'; key_length];
 
     for _ in 0..2 {
@@ -176,7 +175,6 @@ pub fn remora_vigenere(
                 let score = aster_score(plaintext, &decrypted);
                 if score > best_score {
                     best_score = score;
-                    best_decrypted = decrypted;
                     best_char = index;
                 }
             }
@@ -196,7 +194,6 @@ pub fn remora_beaufort(
 ) -> (String, f64) {
     let mut best_score = 0.0;
     let mut best_keyword2 = String::new();
-    let mut best_decrypted = String::new();
     let mut keyword2: Vec<char> = vec!['A'; key_length];
 
     let transformed_encrypted_text = atbash_transform(encrypted_text);
@@ -213,7 +210,6 @@ pub fn remora_beaufort(
 
                 if score > best_score {
                     best_score = score;
-                    best_decrypted = decrypted;
                     best_char = index;
                 }
             }

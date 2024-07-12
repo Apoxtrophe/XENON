@@ -1,13 +1,12 @@
-use core::arch;
 use std::{collections::HashMap, vec};
 
-use itertools::rev;
+use egui_plot::{Bar, BarChart, Plot, PlotPoint, Text};
 
-use crate::analysis::percentage_blocks;
+use crate::{PANEL_SIZE, SCREEN_HEIGHT};
+
 
 pub fn split_and_transform(s: &str, n: usize) -> Option<Vec<Vec<char>>> {
     if s.is_empty() || n == 0 {
-        println!("Kullback input empty");
         return None;
     }
     let chars: Vec<char> = s.chars().collect();
@@ -64,72 +63,41 @@ pub fn kullback_ioc(input: Vec<Vec<char>>) -> (Vec<Vec<String>>, f64) {
     (string_matrix, avg_ioc)
 }
 
-pub fn kullback (
+pub fn kullback(
     encrypted_text: &str,
-    key_length: usize,
-) -> String{
+) -> Vec<f64> {
     let mut aggr_ioc: Vec<f64> = vec![0.0; 60];
 
-    for i in 1..60{
+    for i in 1..60 {
         let transformed = split_and_transform(encrypted_text, i).unwrap_or_default();
         let result = kullback_ioc(transformed);
         aggr_ioc[i] = result.1;
     }
-    ascii_graph(aggr_ioc)
-    //ascii_graph2(aggr_ioc)
+
+    aggr_ioc
 }
 
-fn ascii_graph(values: Vec<f64>) -> String {
-    let length = values.len();
-    let min = 0.038;
-    let max = 0.068;
-    let mut graph = vec![String::new(); 60];
+pub fn plot_kullback(ui: &mut egui::Ui, aggr_ioc: Vec<f64>) {
+    let mut bars = Vec::new();
     
-    for i in 0..length {
-        let slice = blocks(values[i], min, max);
-        graph[i] = slice; 
-    }
-    let height = 10;
-    let mut graphy = String::new();
-    for i in (0..height).rev() {
-        for j in (1..60) {
-            let indexed_char = graph[j].chars().nth(i).unwrap();
-            graphy.push_str(&indexed_char.to_string());
-        }
-        graphy.push_str("\n");
-    }
-    let mut notables = String::new();
-    let mut noted = String::new();
-
-    for i in 0..length{
-
-        if values[i] > 0.058 {
-            noted = i.to_string();
-            noted.push_str(",");
-            notables.push_str(&noted);
-        }
+    for (i, &v) in aggr_ioc.iter().enumerate() {
+        bars.push(Bar::new(i as f64, v));
     }
 
+    let chart = BarChart::new(bars).name("Kullback IoC");
 
+    Plot::new("Kullback IoC Plot")
+        .width(PANEL_SIZE) // Set the width of the plot
+        .height(SCREEN_HEIGHT * 0.25) // Set the height of the plot
+        .show(ui, |plot_ui| {
+            plot_ui.bar_chart(chart);
 
-   
-    
-    graphy.push_str(&notables);
-    graphy
-    
-}
-
-pub fn blocks(value: f64, min: f64, max: f64) -> String {
-    let bounded_value = value.clamp(min, max);
-    let percentage = (bounded_value - min) / (max - min);
-    let filled_blocks = (percentage * 10.0).round() as usize;
-    let empty_blocks = 20 - filled_blocks;
-    
-    let mut filled_str = "▒".repeat(filled_blocks);
-    if percentage > 0.8{
-        filled_str = "█".repeat(filled_blocks);
-    }
-    let empty_str = " ".repeat(empty_blocks);
-
-    format!("[{}{}]", filled_str, empty_str)
+            for (i, &v) in aggr_ioc.iter().enumerate() {
+                if v > 0.06 {
+                    let text = Text::new(PlotPoint::new(i as f64, v), egui::RichText::new(format!("{}", i)).size(16.0).color(egui::Color32::YELLOW))
+                    .highlight(true);
+                plot_ui.text(text);
+                }
+            }
+        });
 }
