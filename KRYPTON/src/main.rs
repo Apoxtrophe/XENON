@@ -53,6 +53,7 @@ impl MyApp {
     }
 
     fn update_terminal1(&mut self, value: String) {
+        println!("{}", "Hello World");
         self.terminal1 = value;
     }
 
