@@ -3,9 +3,45 @@ use std::sync::{Arc, Mutex};
 use itertools::Itertools;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 
-use crate::{analysis::aster_score, atbash_transform, vigenere_decrypt};
+use crate::{aster_score, vigenere_decrypt};
 
-pub fn tigershark_beaufort(
+
+pub fn reefshark_vigenere(
+    keyword1: &str,
+    encrypted_text: &str,
+    plaintext: &str,
+    key_length: usize,
+) -> String {
+    let mut best_score = 0.0;
+    let mut best_keyword2 = String::new();
+    let mut best_decrypted = String::new();
+    let mut keyword2: Vec<char> = vec!['A'; key_length];
+
+    for _ in 0..2 {
+        for i in 0..key_length {
+            let mut best_char = keyword2[i];
+
+            for index in 'A'..='Z' {
+                keyword2[i] = index;
+                let decrypted = vigenere_decrypt(encrypted_text, keyword1, Some(&keyword2.iter().collect::<String>()));
+                let score = aster_score(plaintext, &decrypted);
+
+                if score > best_score {
+                    best_score = score;
+                    best_decrypted = decrypted;
+                    best_char = index;
+                }
+            }
+
+            keyword2[i] = best_char;
+        }
+    }
+    best_keyword2 = keyword2.iter().collect();
+
+    format!("BestScore: {}\nBest Keyword: {}\nDecrypted: {}", best_score, best_keyword2, best_decrypted)
+}
+
+pub fn tigershark_vigenere(
     key_length1: usize,
     key_length2: usize,
     encrypted_text: &str,
@@ -31,7 +67,7 @@ pub fn tigershark_beaufort(
             // Try each character in the alphabet at the current index
             for &i in alphabet.iter() {
                 keyword1[index] = i;
-                let (keyword2, score) = remora_beaufort(&keyword1.iter().collect::<String>(), encrypted_text, plaintext, key_length2);
+                let (keyword2, score) = remora_vigenere(&keyword1.iter().collect::<String>(), encrypted_text, plaintext, key_length2);
                 if score > best_score {
                     best_score = score;
                     best_keyword1 = keyword1.iter().collect();
@@ -55,7 +91,7 @@ pub fn tigershark_beaufort(
     let permutations: Vec<_> = best_keyword1_chars.iter().permutations(best_keyword1.len()).take(permutations).collect();
     permutations.par_iter().for_each(|permutation| {
         let perm_keyword: String = permutation.iter().map(|&&c| c).collect();
-        let (keyword2, score) = remora_beaufort(&perm_keyword, encrypted_text, plaintext, key_length2);
+        let (keyword2, score) = remora_vigenere(&perm_keyword, encrypted_text, plaintext, key_length2);
         
         let mut best_score = best_permutation_score.lock().unwrap();
         let mut best_keyword1 = best_permutation_keyword1.lock().unwrap();
@@ -73,13 +109,16 @@ pub fn tigershark_beaufort(
     let final_best_keyword2 = best_permutation_keyword2.lock().unwrap().clone();
     let final_best_score = *best_permutation_score.lock().unwrap();
 
+    let final_decryption = vigenere_decrypt(encrypted_text, &best_keyword1, Some(&best_keyword2));
+
     format!(
-        "Best permutation keyword1: {}, keyword2: {}, Score: {}\nFinal BEST KEYWORD1: {:?}\nFinal BEST KEYWORD2: {:?}",
-        final_best_keyword1, final_best_keyword2, final_best_score, final_best_keyword1, final_best_keyword2
+        "Best permutation keyword1: {}, keyword2: {}, Score: {}\nFinal BEST KEYWORD1: {:?}\nFinal BEST KEYWORD2: {:?}\n{:?}",
+        final_best_keyword1, final_best_keyword2, final_best_score, final_best_keyword1, final_best_keyword2, final_decryption
     )
 }
 
-pub fn remora_beaufort(
+
+pub fn remora_vigenere(
     keyword1: &str,
     encrypted_text: &str,
     plaintext: &str,
@@ -89,18 +128,14 @@ pub fn remora_beaufort(
     let mut best_keyword2 = String::new();
     let mut keyword2: Vec<char> = vec!['A'; key_length];
 
-    let transformed_encrypted_text = atbash_transform(encrypted_text);
-    let transformed_keyword1 = atbash_transform(keyword1);
-
     for _ in 0..2 {
         for i in 0..key_length {
             let mut best_char = keyword2[i];
 
             for index in 'A'..='Z' {
                 keyword2[i] = index;
-                let decrypted = vigenere_decrypt(&transformed_encrypted_text, &transformed_keyword1, Some(&keyword2.iter().collect::<String>()));
+                let decrypted = vigenere_decrypt(encrypted_text, keyword1, Some(&keyword2.iter().collect::<String>()));
                 let score = aster_score(plaintext, &decrypted);
-
                 if score > best_score {
                     best_score = score;
                     best_char = index;

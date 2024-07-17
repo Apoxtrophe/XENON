@@ -1,6 +1,6 @@
-use egui::{Color32, FontId, RichText, TextEdit, Ui};
+use egui::{Button, Color32, FontId, RichText, TextEdit, Ui};
 
-use crate::{DATA_COLOR, FONT_COLOR, FONT_SIZE, HEADING_COLOR, HEADING_SIZE, HINT_COLOR, LABEL_COLOR, PANEL_SIZE};
+use crate::{DATA_COLOR, FONT_COLOR, FONT_SIZE, HEADING_COLOR, HEADING_SIZE, HINT_COLOR, LABEL_COLOR, PANEL_SIZE, SCREEN_HEIGHT};
 
 pub fn title(ui: &mut egui::Ui, text: &str) {
     ui.heading(
@@ -43,7 +43,6 @@ pub fn percentage_heading(ui: &mut egui::Ui, label1: &str, label2: &str, percent
             .color(DATA_COLOR)
             .font(FontId::monospace(FONT_SIZE)),
     );
-    ui.separator();
 }
 
 pub fn text_edit<'a>(text: &'a mut String, hint: &str) -> TextEdit<'a> {
@@ -62,8 +61,8 @@ pub fn singleline_edit<'a>(text: &'a mut String, hint: &str) -> TextEdit<'a> {
         .desired_width(PANEL_SIZE)
 }
 
-pub fn create_button(ui: &mut Ui, label: &str, on_click: impl FnOnce()) {
-    if ui.button(RichText::new(label).font(FontId::monospace(HEADING_SIZE)).color(Color32::LIGHT_GREEN)).highlight().clicked() {
+pub fn create_button(ui: &mut Ui, label: &str, number: f32, on_click: impl FnOnce()) {
+    if ui.add_sized(((PANEL_SIZE * 0.4 * (1.0 / number)), SCREEN_HEIGHT * 0.02), egui::Button::new(RichText::new(label).font(FontId::monospace(FONT_SIZE)).color(Color32::GRAY))).clicked() {
         on_click();
     }
 }

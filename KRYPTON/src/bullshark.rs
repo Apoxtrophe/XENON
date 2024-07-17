@@ -1,42 +1,5 @@
 use crate::{analysis::aster_score, atbash_transform, vigenere_decrypt};
 
-pub fn bullshark_vigenere(
-    keyword1: &str,
-    encrypted_text: &str,
-    plaintext: &str,
-    key_length: usize,
-) -> String {
-    let mut best_score = 0.0;
-    let mut best_keyword2 = String::new();
-    let mut best_decrypted = String::new();
-    let mut keyword2: Vec<char> = vec!['A'; key_length];
-
-    for _ in 0..2 {
-        for i in 0..key_length {
-            let mut best_char = keyword2[i];
-
-            for index in 'A'..='Z' {
-                keyword2[i] = index;
-                let decrypted = vigenere_decrypt(encrypted_text, keyword1, Some(&keyword2.iter().collect::<String>()));
-                let score = aster_score(plaintext, &decrypted);
-
-                if score > best_score {
-                    best_score = score;
-                    best_decrypted = decrypted;
-                    best_char = index;
-                }
-            }
-
-            keyword2[i] = best_char;
-        }
-    }
-    best_keyword2 = keyword2.iter().collect();
-
-    format!("BestScore: {}\nBest Keyword: {}\nDecrypted: {}", best_score, best_keyword2, best_decrypted)
-}
-
-
-
 pub fn bullshark_beaufort(
     keyword1: &str,
     encrypted_text: &str,
