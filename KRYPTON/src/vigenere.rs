@@ -48,7 +48,6 @@ pub fn vigenere_wolf(
     plaintext: &str,
     permutations: usize,
 ) -> String {
-    // Define the alphabet in reverse order
     let alphabet: [char; 26] = [
         'Z', 'Y', 'X', 'W', 'V', 'U', 'T', 'S', 'R', 'Q', 'P', 'O', 'N',
         'M', 'L', 'K', 'J', 'I', 'H', 'G', 'F', 'E', 'D', 'C', 'B', 'A'
@@ -60,11 +59,9 @@ pub fn vigenere_wolf(
     let mut best_keyword1 = String::new();
     let mut best_keyword2 = String::new();
 
-    // Iterate 5 times to find the best keyword
-    for _ in 0..5 {
+    for _ in 0..10 {  // Increased iterations for better search
         for index in 0..key_length1 {
             let mut best_char = keyword1[index];
-            // Try each character in the alphabet at the current index
             for &i in alphabet.iter() {
                 keyword1[index] = i;
                 let (keyword2, score) = remora_vigenere(&keyword1.iter().collect::<String>(), encrypted_text, plaintext, key_length2);
@@ -79,14 +76,12 @@ pub fn vigenere_wolf(
         }
     }
 
-    // Perform post-processing to check a limited number of permutations of best_keyword1
     println!("Post-processing permutations of best_keyword1: {:?}", best_keyword1);
     let best_keyword1_chars: Vec<char> = best_keyword1.chars().collect();
     let best_permutation_score = Arc::new(Mutex::new(best_score));
     let best_permutation_keyword1 = Arc::new(Mutex::new(best_keyword1.clone()));
     let best_permutation_keyword2 = Arc::new(Mutex::new(best_keyword2.clone()));
 
-    // Limit the permutations to the first 10000 (adjust this as needed)
     let permutations: Vec<_> = best_keyword1_chars.iter().permutations(best_keyword1.len()).take(permutations).collect();
     permutations.par_iter().for_each(|permutation| {
         let perm_keyword: String = permutation.iter().map(|&&c| c).collect();
@@ -115,7 +110,6 @@ pub fn vigenere_wolf(
     )
 }
 
-
 pub fn remora_vigenere(
     keyword1: &str,
     encrypted_text: &str,
@@ -126,15 +120,14 @@ pub fn remora_vigenere(
     let mut best_keyword2 = String::new();
     let mut keyword2: Vec<char> = vec!['A'; key_length];
 
-    for _ in 0..2 {
+    for _ in 0..5 {  // Increased iterations for better search
         for i in 0..key_length {
             let mut best_char = keyword2[i];
 
             for index in 'A'..='Z' {
                 keyword2[i] = index;
                 let decrypted = vigenere_decrypt(encrypted_text, keyword1, Some(&keyword2.iter().collect::<String>()));
-                //let score = aster_score(plaintext, &decrypted);
-                let score = match_percentage(plaintext,&decrypted);
+                let score = aster_score(plaintext, &decrypted);
                 if score > best_score {
                     best_score = score;
                     best_char = index;
