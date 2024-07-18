@@ -2,7 +2,7 @@ use std::{collections::HashMap, vec};
 
 use egui_plot::{Bar, BarChart, Plot, PlotPoint, Text};
 
-use crate::{PANEL_SIZE, SCREEN_HEIGHT};
+use crate::{OBJECT_LENGTH, OBJECT_SIZE, PANEL_SIZE, SCREEN_HEIGHT};
 
 
 pub fn split_and_transform(s: &str, n: usize) -> Option<Vec<Vec<char>>> {
@@ -86,8 +86,8 @@ pub fn plot_kullback(ui: &mut egui::Ui, aggr_ioc: Vec<f64>) {
     let chart = BarChart::new(bars).name("Kullback IoC");
 
     Plot::new("Kullback IoC Plot")
-        .width(PANEL_SIZE) // Set the width of the plot
-        .height(SCREEN_HEIGHT * 0.25) // Set the height of the plot
+        .width(OBJECT_SIZE) // Set the width of the plot
+        .height(OBJECT_LENGTH) // Set the height of the plot
         .show(ui, |plot_ui| {
             plot_ui.bar_chart(chart);
 

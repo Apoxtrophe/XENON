@@ -2,9 +2,12 @@ pub const SCREEN_WIDTH: f32 = 3440.0;
 pub const SCREEN_HEIGHT: f32 = 1440.0;
 pub const FONT_SIZE: f32 = 18.0;
 pub const HEADING_SIZE: f32 = 24.0;
+pub const PANELS :u8 = 4;
 
 
-pub const PANEL_SIZE: f32 = (SCREEN_WIDTH * 0.25)*0.97;
+pub const PANEL_SIZE: f32 = (SCREEN_WIDTH * (1.0 / PANELS as f32));
+pub const OBJECT_SIZE: f32 = PANEL_SIZE * 0.9; 
+pub const OBJECT_LENGTH: f32 = SCREEN_HEIGHT * 0.25; 
 pub const FONT_COLOR: egui::Color32 = egui::Color32::LIGHT_GREEN;
 pub const HINT_COLOR: egui::Color32 = egui::Color32::DARK_GRAY;
 pub const HEADING_COLOR: egui::Color32 = egui::Color32::LIGHT_GRAY;

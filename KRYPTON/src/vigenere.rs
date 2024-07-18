@@ -3,10 +3,10 @@ use std::sync::{Arc, Mutex};
 use itertools::Itertools;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 
-use crate::{aster_score, vigenere_decrypt};
+use crate::{aster_score, ioc, match_percentage, substitution_cipher_score, vigenere_decrypt};
 
 
-pub fn reefshark_vigenere(
+pub fn vigenere_hawk(
     keyword1: &str,
     encrypted_text: &str,
     plaintext: &str,
@@ -38,10 +38,10 @@ pub fn reefshark_vigenere(
     }
     best_keyword2 = keyword2.iter().collect();
 
-    format!("BestScore: {}\nBest Keyword: {}\nDecrypted: {}", best_score, best_keyword2, best_decrypted)
+    format!("Vigenere HAWK Analysis \n\nBestScore: {}\nBest Keyword: {}\nDecrypted: {}", best_score, best_keyword2, best_decrypted)
 }
 
-pub fn tigershark_vigenere(
+pub fn vigenere_wolf(
     key_length1: usize,
     key_length2: usize,
     encrypted_text: &str,
@@ -77,7 +77,6 @@ pub fn tigershark_vigenere(
             }
             keyword1[index] = best_char;
         }
-
     }
 
     // Perform post-processing to check a limited number of permutations of best_keyword1
@@ -101,7 +100,6 @@ pub fn tigershark_vigenere(
             *best_score = score;
             *best_keyword1 = perm_keyword.clone();
             *best_keyword2 = keyword2.clone();
-
         }
     });
 
@@ -109,10 +107,10 @@ pub fn tigershark_vigenere(
     let final_best_keyword2 = best_permutation_keyword2.lock().unwrap().clone();
     let final_best_score = *best_permutation_score.lock().unwrap();
 
-    let final_decryption = vigenere_decrypt(encrypted_text, &best_keyword1, Some(&best_keyword2));
+    let final_decryption = vigenere_decrypt(encrypted_text, &final_best_keyword1, Some(&final_best_keyword2));
 
     format!(
-        "Best permutation keyword1: {}, keyword2: {}, Score: {}\nFinal BEST KEYWORD1: {:?}\nFinal BEST KEYWORD2: {:?}\n{:?}",
+        "Best permutation keyword1: {}, keyword2: {}, Score: {}\nFinal BEST KEYWORD1: {:?}\nFinal BEST KEYWORD2: {}\n{}",
         final_best_keyword1, final_best_keyword2, final_best_score, final_best_keyword1, final_best_keyword2, final_decryption
     )
 }
@@ -135,7 +133,8 @@ pub fn remora_vigenere(
             for index in 'A'..='Z' {
                 keyword2[i] = index;
                 let decrypted = vigenere_decrypt(encrypted_text, keyword1, Some(&keyword2.iter().collect::<String>()));
-                let score = aster_score(plaintext, &decrypted);
+                //let score = aster_score(plaintext, &decrypted);
+                let score = match_percentage(plaintext,&decrypted);
                 if score > best_score {
                     best_score = score;
                     best_char = index;
@@ -146,5 +145,5 @@ pub fn remora_vigenere(
         }
     }
     best_keyword2 = keyword2.iter().collect();
-    return (best_keyword2, best_score);
+    (best_keyword2, best_score)
 }

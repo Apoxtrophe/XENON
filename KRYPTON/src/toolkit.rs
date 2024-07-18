@@ -1,3 +1,5 @@
+use rand::{seq::SliceRandom, thread_rng};
+
 pub fn vigenere_encrypt(plaintext: &str, key1: &str, key2: Option<&str>) -> String {
     let key1 = generate_key(key1, "ABCDEFGHIJKLMNOPQRSTUVWXYZ");
     let plaintext = plaintext.to_uppercase();
@@ -109,3 +111,24 @@ pub fn generate_key(key: &str, default: &str) -> String {
         key.to_string()
     }
 }
+
+pub fn obscure_text(text: &str, percentage: f64) -> String {
+    if percentage < 0.0 || percentage > 100.0 {
+        panic!("Percentage must be between 0.0 and 100.0");
+    }
+
+    let mut chars: Vec<char> = text.chars().collect();
+    let total_chars = chars.len();
+    let num_to_remove = ((percentage / 100.0) * total_chars as f64).round() as usize;
+
+    let mut rng = thread_rng();
+    let mut indices: Vec<usize> = (0..total_chars).collect();
+    indices.shuffle(&mut rng);
+
+    for i in 0..num_to_remove {
+        chars[indices[i]] = '_';
+    }
+
+    chars.iter().collect()
+}
+

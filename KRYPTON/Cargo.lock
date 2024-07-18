@@ -12,6 +12,7 @@ dependencies = [
  "egui_plot",
  "itertools",
  "permutohedron",
+ "rand",
  "rayon",
 ]
 
